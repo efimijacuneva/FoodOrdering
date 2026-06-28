@@ -1,0 +1,79 @@
+networks:
+  food-ordering-net:
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: food_ordering_db
+    restart: unless-stopped
+    networks:
+      - food-ordering-net
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-food_ordering_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-food_ordering_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USERNAME:-local}/food-ordering-backend:${IMAGE_TAG:-latest}
+    container_name: food_ordering_backend
+    restart: unless-stopped
+    networks:
+      - food-ordering-net
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-django-insecure-dev-key-change-in-production}
+      DEBUG: ${DEBUG:-False}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DB_NAME: ${POSTGRES_DB:-food_ordering_db}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-Tasty Bites <noreply@tastybites.mk>}
+    volumes:
+      - media_files:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/')\""]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USERNAME:-local}/food-ordering-frontend:${IMAGE_TAG:-latest}
+    container_name: food_ordering_frontend
+    restart: unless-stopped
+    networks:
+      - food-ordering-net
+    environment:
+      BACKEND_HOST: backend
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_started
+
+volumes:
+  postgres_data:
+    driver: local
+  media_files:
+    driver: local

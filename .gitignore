@@ -1,0 +1,80 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+env/
+venv/
+ENV/
+.venv/
+.virtualenv/
+
+# ── Django ────────────────────────────────────────────────────────────────────
+*.sqlite3
+backend/staticfiles/
+backend/media/
+backend/menu_images/
+
+# ── Test / Coverage ───────────────────────────────────────────────────────────
+.coverage
+.pytest_cache/
+htmlcov/
+coverage.xml
+*.cover
+nosetests.xml
+test-results/
+
+# ── Environment variables ─────────────────────────────────────────────────────
+# .env.example should be committed — it contains no secrets
+.env
+.env.local
+.env.production
+.env.staging
+*.env
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Kubernetes secrets (never commit real secrets) ───────────────────────────
+k8s/secret-real.yaml
+k8s/*-secret-override.yaml
+
+# ── Node (if added later) ─────────────────────────────────────────────────────
+node_modules/

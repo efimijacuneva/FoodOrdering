@@ -1,0 +1,57 @@
+{% extends 'admin_panel/base.html' %}
+{% block title %}{{ action }} Category{% endblock %}
+{% block page_title %}{{ action }} Category{% endblock %}
+{% block nav_categories %}active-link{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="mb-3">
+      <a href="{% url 'admin_categories' %}" class="text-muted small">
+        <i class="fas fa-arrow-left me-1"></i>Back to Categories
+      </a>
+    </div>
+    <div class="form-card">
+      <h5 class="fw-bold mb-4">{{ action }} Category</h5>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% if field.field.widget.input_type == 'textarea' %}
+          <textarea id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                    class="form-control {% if field.errors %}is-invalid{% endif %}"
+                    rows="2">{{ field.value|default:'' }}</textarea>
+          {% elif field.field.widget.input_type == 'checkbox' %}
+          <div class="form-check">
+            <input type="checkbox" id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                   class="form-check-input" {% if field.value %}checked{% endif %}>
+            <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          </div>
+          {% elif field.field.widget.input_type == 'file' %}
+          {% if category.image %}
+          <div class="mb-2">
+            <img src="{{ category.image.url }}" alt="Current"
+                 style="height:60px;border-radius:8px;object-fit:cover;">
+          </div>
+          {% endif %}
+          <input type="file" id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                 class="form-control {% if field.errors %}is-invalid{% endif %}" accept="image/*">
+          {% else %}
+          <input type="{{ field.field.widget.input_type|default:'text' }}"
+                 id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                 class="form-control {% if field.errors %}is-invalid{% endif %}"
+                 value="{{ field.value|default:'' }}">
+          {% endif %}
+          {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+        </div>
+        {% endfor %}
+        <div class="d-flex gap-2 mt-3">
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save</button>
+          <a href="{% url 'admin_categories' %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

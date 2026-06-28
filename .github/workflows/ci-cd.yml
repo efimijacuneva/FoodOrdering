@@ -1,0 +1,255 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 1 – Test
+  # Runs on every push and pull request against main
+  # ─────────────────────────────────────────────────────────────────────────────
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    env:
+      SECRET_KEY: ci-test-secret-key-not-for-production
+      DEBUG: 'True'
+      ALLOWED_HOSTS: 'localhost,127.0.0.1,testserver'
+      DJANGO_SETTINGS_MODULE: restaurant.settings
+      DB_NAME: test_food_ordering
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: localhost
+      DB_PORT: '5432'
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: test_food_ordering
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Run Django system checks
+        run: |
+          cd backend
+          python manage.py check --fail-level ERROR
+
+      - name: Run database migrations
+        run: |
+          cd backend
+          python manage.py migrate --noinput
+
+      - name: Collect static files
+        run: |
+          cd backend
+          python manage.py collectstatic --noinput
+
+      - name: Run Django tests
+        run: |
+          cd backend
+          python manage.py test orders --verbosity=2
+
+      - name: Validate docker-compose syntax
+        run: docker compose config --quiet
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 2 – Build & Push Docker Images
+  # Runs only on push to main, after tests pass
+  # ─────────────────────────────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    env:
+      BACKEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/food-ordering-backend
+      FRONTEND_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/food-ordering-frontend
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.short_sha }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image metadata
+        id: meta
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-8)
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "Image tag: ${SHORT_SHA}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ steps.meta.outputs.short_sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.meta.outputs.short_sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+      - name: Write job summary
+        run: |
+          echo "### Docker Images Published :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | Tags |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | \`latest\`, \`${{ steps.meta.outputs.short_sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | \`latest\`, \`${{ steps.meta.outputs.short_sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Job 3 – Deploy to Kubernetes  [OPTIONAL BONUS]
+  # Set the KUBECONFIG secret in GitHub → Settings → Secrets to enable this job.
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+
+    steps:
+      - name: Check for KUBECONFIG secret
+        id: check
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG }}
+        run: |
+          if [ -z "$KUBECONFIG_B64" ]; then
+            echo "has_kubeconfig=false" >> $GITHUB_OUTPUT
+            echo "KUBECONFIG secret is not set — skipping Kubernetes deployment."
+            echo "Add the KUBECONFIG secret in Settings → Secrets to enable auto-deploy."
+          else
+            echo "has_kubeconfig=true" >> $GITHUB_OUTPUT
+            echo "KUBECONFIG secret found — proceeding with deployment."
+          fi
+
+      - name: Checkout code
+        if: steps.check.outputs.has_kubeconfig == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        if: steps.check.outputs.has_kubeconfig == 'true'
+        uses: azure/setup-kubectl@v4
+        with:
+          version: latest
+
+      - name: Configure kubectl
+        if: steps.check.outputs.has_kubeconfig == 'true'
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG }}
+        run: |
+          mkdir -p $HOME/.kube
+          echo "$KUBECONFIG_B64" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Substitute image tag in manifests
+        if: steps.check.outputs.has_kubeconfig == 'true'
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          if [ -z "$IMAGE_TAG" ]; then
+            echo "ERROR: IMAGE_TAG is empty — build-and-push did not produce a valid tag."
+            exit 1
+          fi
+          echo "Deploying image tag: ${IMAGE_TAG}"
+          sed -i "s|:latest|:${IMAGE_TAG}|g" \
+            k8s/backend-deployment.yaml \
+            k8s/frontend-deployment.yaml
+
+      - name: Apply Kubernetes manifests
+        if: steps.check.outputs.has_kubeconfig == 'true'
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/configmap.yaml
+          kubectl apply -f k8s/secret.yaml
+          kubectl apply -f k8s/persistent-volume.yaml
+          kubectl apply -f k8s/persistent-volume-claim.yaml
+          kubectl apply -f k8s/postgres-statefulset.yaml
+          kubectl apply -f k8s/postgres-service.yaml
+          kubectl apply -f k8s/backend-deployment.yaml
+          kubectl apply -f k8s/backend-service.yaml
+          kubectl apply -f k8s/frontend-deployment.yaml
+          kubectl apply -f k8s/frontend-service.yaml
+          kubectl apply -f k8s/ingress.yaml
+
+      - name: Wait for rollout
+        if: steps.check.outputs.has_kubeconfig == 'true'
+        run: |
+          kubectl rollout status deployment/backend  -n food-ordering --timeout=120s
+          kubectl rollout status deployment/frontend -n food-ordering --timeout=120s
+
+      - name: Write deployment summary
+        if: steps.check.outputs.has_kubeconfig == 'true'
+        run: |
+          echo "### Kubernetes Deployment :kubernetes:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n food-ordering >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,79 @@
+{% extends 'admin_panel/base.html' %}
+{% block title %}Order #{{ order.id }}{% endblock %}
+{% block page_title %}Order #{{ order.id }}{% endblock %}
+{% block nav_orders %}active-link{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="{% url 'admin_orders' %}" class="text-muted small">
+    <i class="fas fa-arrow-left me-1"></i>Back to Orders
+  </a>
+</div>
+
+<div class="row g-4">
+  <!-- Left: Items -->
+  <div class="col-lg-7">
+    <div class="form-card mb-4">
+      <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+          <h5 class="fw-bold mb-1">Order #{{ order.id }}</h5>
+          <span class="text-muted small">{{ order.created_at|date:"d M Y, H:i" }}</span>
+        </div>
+        <span class="status-badge status-{{ order.status }}">{{ order.get_status_display }}</span>
+      </div>
+
+      <h6 class="fw-bold mb-3 text-muted text-uppercase" style="font-size:.75rem;letter-spacing:.5px">Items</h6>
+      {% for item in order.items.all %}
+      <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
+        <div>
+          <span class="fw-500">{{ item.product_name }}</span>
+          <span class="text-muted small ms-1">× {{ item.quantity }}</span>
+          <span class="text-muted small ms-1">(€{{ item.product_price }} each)</span>
+          {% if item.notes %}<div class="text-muted small fst-italic">{{ item.notes }}</div>{% endif %}
+        </div>
+        <span class="fw-500">€{{ item.get_subtotal }}</span>
+      </div>
+      {% endfor %}
+      <div class="d-flex justify-content-between mt-3 pt-2">
+        <span class="fw-bold">Total</span>
+        <span class="fw-bold" style="color:var(--primary);font-size:1.15rem">€{{ order.total_price }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Customer + Status -->
+  <div class="col-lg-5">
+    <!-- Customer info -->
+    <div class="form-card mb-4">
+      <h6 class="fw-bold mb-3">Customer</h6>
+      <div class="small">
+        <div class="mb-2"><i class="fas fa-user me-2 text-muted"></i>{{ order.get_customer_name }}</div>
+        {% with email=order.get_customer_email %}
+        {% if email %}<div class="mb-2"><i class="fas fa-envelope me-2 text-muted"></i>{{ email }}</div>{% endif %}
+        {% endwith %}
+        <div class="mb-2"><i class="fas fa-phone me-2 text-muted"></i>{{ order.phone }}</div>
+        <div class="mb-2"><i class="fas fa-location-dot me-2 text-muted"></i>{{ order.delivery_address }}</div>
+        {% if order.notes %}<div><i class="fas fa-note-sticky me-2 text-muted"></i>{{ order.notes }}</div>{% endif %}
+      </div>
+    </div>
+
+    <!-- Update status -->
+    <div class="form-card">
+      <h6 class="fw-bold mb-3">Update Status</h6>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <select name="status" class="form-select">
+            {% for key, label in form.instance.STATUS_CHOICES %}
+            <option value="{{ key }}" {% if form.instance.status == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="fas fa-rotate-right me-1"></i>Update Status
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

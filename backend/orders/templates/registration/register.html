@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Create Account — Tasty Bites{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="form-card">
+        <div class="text-center mb-4">
+          <i class="fas fa-user-plus fa-2x mb-3" style="color:var(--primary)"></i>
+          <h4 class="fw-bold mb-1">Create Account</h4>
+          <p class="text-muted small">Join Tasty Bites and start ordering</p>
+        </div>
+
+        <form method="post">
+          {% csrf_token %}
+          {% for field in form %}
+          <div class="mb-3">
+            <label class="form-label" for="{{ field.id_for_label }}">
+              {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+            </label>
+            <input type="{{ field.field.widget.input_type|default:'text' }}"
+                   id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                   class="form-control {% if field.errors %}is-invalid{% endif %}"
+                   value="{{ field.value|default:'' }}"
+                   placeholder="{{ field.field.widget.attrs.placeholder|default:'' }}">
+            {% if field.help_text %}
+            <div class="form-text text-muted" style="font-size:.78rem;">{{ field.help_text }}</div>
+            {% endif %}
+            {% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+          </div>
+          {% endfor %}
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger small">{{ form.non_field_errors }}</div>
+          {% endif %}
+          <button type="submit" class="btn btn-primary w-100 py-2 mt-1">
+            <i class="fas fa-user-plus me-1"></i>Create Account
+          </button>
+        </form>
+
+        <hr class="my-4">
+        <p class="text-center text-muted small mb-0">
+          Already have an account?
+          <a href="{% url 'login' %}" class="fw-500">Sign in</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

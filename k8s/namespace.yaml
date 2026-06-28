@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: food-ordering
+  labels:
+    name: food-ordering
+    app: food-ordering-application

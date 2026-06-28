@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Order #{{ order.id }} — Tasty Bites{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="mb-4">
+    <a href="{% url 'order_history' %}" class="text-muted small">
+      <i class="fas fa-arrow-left me-1"></i>Back to Orders
+    </a>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left: Items + Timeline -->
+    <div class="col-lg-7">
+      <div class="form-card mb-4">
+        <div class="d-flex align-items-start justify-content-between mb-4">
+          <div>
+            <h4 class="fw-bold mb-1">Order #{{ order.id }}</h4>
+            <span class="text-muted small">{{ order.created_at|date:"d M Y, H:i" }}</span>
+          </div>
+          <span class="status-badge status-{{ order.status }}">{{ order.get_status_display }}</span>
+        </div>
+
+        <!-- Timeline -->
+        <h6 class="fw-bold mb-3 text-muted text-uppercase" style="font-size:.78rem;letter-spacing:.5px">Order Progress</h6>
+        <ul class="order-timeline mb-4">
+          {% for s in order.STATUS_CHOICES %}
+          {% if s.0 != 'CANCELLED' %}
+          <li class="{% if order.status == s.0 or order.status == 'DELIVERED' and s.0 != 'CANCELLED' %}done{% elif order.status == 'ACCEPTED' and s.0 == 'PENDING' %}done{% elif order.status == 'PREPARING' and s.0 in 'PENDING,ACCEPTED' %}done{% elif order.status == 'OUT_FOR_DELIVERY' and s.0 in 'PENDING,ACCEPTED,PREPARING' %}done{% endif %}">
+            <strong class="small">{{ s.1 }}</strong>
+          </li>
+          {% endif %}
+          {% endfor %}
+          {% if order.status == 'CANCELLED' %}
+          <li class="done"><strong class="small text-danger">Cancelled</strong></li>
+          {% endif %}
+        </ul>
+
+        <!-- Items -->
+        <h6 class="fw-bold mb-3 text-muted text-uppercase" style="font-size:.78rem;letter-spacing:.5px">Items Ordered</h6>
+        {% for item in order.items.all %}
+        <div class="d-flex justify-content-between align-items-start mb-2 pb-2 border-bottom">
+          <div>
+            <span class="fw-500">{{ item.product_name }}</span>
+            <span class="text-muted small ms-1">x{{ item.quantity }}</span>
+            {% if item.notes %}<div class="text-muted small fst-italic">{{ item.notes }}</div>{% endif %}
+          </div>
+          <span class="fw-500 ms-2">€{{ item.get_subtotal }}</span>
+        </div>
+        {% endfor %}
+        <div class="d-flex justify-content-between mt-3">
+          <span class="fw-bold">Total</span>
+          <span class="fw-bold" style="color:var(--primary);font-size:1.15rem">€{{ order.total_price }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Delivery info -->
+    <div class="col-lg-5">
+      <div class="form-card">
+        <h5 class="fw-bold mb-3">Delivery Details</h5>
+        <ul class="list-unstyled small">
+          <li class="mb-3">
+            <div class="text-muted mb-1"><i class="fas fa-location-dot me-1"></i>Address</div>
+            <div>{{ order.delivery_address }}</div>
+          </li>
+          <li class="mb-3">
+            <div class="text-muted mb-1"><i class="fas fa-phone me-1"></i>Phone</div>
+            <div>{{ order.phone }}</div>
+          </li>
+          {% if order.notes %}
+          <li>
+            <div class="text-muted mb-1"><i class="fas fa-note-sticky me-1"></i>Notes</div>
+            <div>{{ order.notes }}</div>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

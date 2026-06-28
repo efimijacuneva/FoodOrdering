@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: food-ordering-config
+  namespace: food-ordering
+  labels:
+    app: food-ordering
+data:
+  # Django settings
+  DEBUG: "False"
+  ALLOWED_HOSTS: "localhost,127.0.0.1,food-ordering.local,backend,backend.food-ordering.svc.cluster.local"
+  DJANGO_SETTINGS_MODULE: "restaurant.settings"
+  DEFAULT_FROM_EMAIL: "Tasty Bites <noreply@tastybites.mk>"
+
+  # Database connection (credentials come from Secret)
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_NAME: "food_ordering_db"

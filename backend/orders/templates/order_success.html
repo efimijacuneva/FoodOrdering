@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Order Placed — Tasty Bites{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="form-card text-center">
+        <div class="success-icon"><i class="fas fa-check fa-2x"></i></div>
+        <h3 class="fw-bold mb-2">Order Placed!</h3>
+        <p class="text-muted mb-4">
+          Your order <strong>#{{ order.id }}</strong> has been received and is pending confirmation.
+        </p>
+
+        <div class="text-start rounded p-3 mb-4" style="background:var(--bg-light);border-radius:var(--radius-sm)!important">
+          <div class="row g-2 small">
+            <div class="col-5 text-muted">Delivery to:</div>
+            <div class="col-7 fw-500">{{ order.delivery_address }}</div>
+            <div class="col-5 text-muted">Phone:</div>
+            <div class="col-7">{{ order.phone }}</div>
+            <div class="col-5 text-muted">Total:</div>
+            <div class="col-7 fw-bold" style="color:var(--primary)">€{{ order.total_price }}</div>
+            <div class="col-5 text-muted">Status:</div>
+            <div class="col-7">
+              <span class="status-badge status-{{ order.status }}">{{ order.get_status_display }}</span>
+            </div>
+          </div>
+        </div>
+
+        {% if not user.is_authenticated %}
+        <div class="alert alert-info text-start small mb-4">
+          <i class="fas fa-circle-info me-1"></i>
+          <a href="{% url 'register' %}">Create an account</a> to track your orders and save your details for next time.
+        </div>
+        {% endif %}
+
+        <div class="d-flex gap-2 justify-content-center flex-wrap">
+          <a href="{% url 'menu' %}" class="btn btn-outline-primary">
+            <i class="fas fa-book-open me-1"></i>Back to Menu
+          </a>
+          {% if user.is_authenticated %}
+          <a href="{% url 'order_history' %}" class="btn btn-primary">
+            <i class="fas fa-clock-rotate-left me-1"></i>My Orders
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

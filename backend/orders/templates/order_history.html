@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Order History — Tasty Bites{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h2 class="mb-0"><i class="fas fa-clock-rotate-left me-2" style="color:var(--primary)"></i>My Orders</h2>
+    <a href="{% url 'menu' %}" class="btn btn-outline-primary btn-sm">
+      <i class="fas fa-plus me-1"></i>New Order
+    </a>
+  </div>
+
+  {% if orders %}
+  {% for order in orders %}
+  <a href="{% url 'order_detail' order.id %}" class="text-decoration-none">
+    <div class="order-card status-{{ order.status }}">
+      <div class="row align-items-center">
+        <div class="col-sm-6">
+          <div class="d-flex align-items-center gap-3">
+            <div>
+              <span class="fw-bold">#{{ order.id }}</span>
+              <span class="text-muted small ms-2">{{ order.created_at|date:"d M Y, H:i" }}</span>
+            </div>
+          </div>
+          <div class="text-muted small mt-1">
+            {{ order.items.count }} item{{ order.items.count|pluralize }} &middot;
+            {{ order.delivery_address|truncatechars:40 }}
+          </div>
+        </div>
+        <div class="col-sm-3 mt-2 mt-sm-0">
+          <span class="status-badge status-{{ order.status }}">{{ order.get_status_display }}</span>
+        </div>
+        <div class="col-sm-3 text-sm-end mt-2 mt-sm-0">
+          <span class="fw-bold" style="color:var(--primary);font-size:1.1rem">€{{ order.total_price }}</span>
+          <div class="text-muted small">View details <i class="fas fa-chevron-right ms-1"></i></div>
+        </div>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+
+  {% else %}
+  <div class="text-center py-5">
+    <i class="fas fa-receipt fa-4x text-muted mb-4 d-block"></i>
+    <h4 class="text-muted">No orders yet</h4>
+    <p class="text-muted">Place your first order from our menu!</p>
+    <a href="{% url 'menu' %}" class="btn btn-primary mt-2">
+      <i class="fas fa-book-open me-1"></i>Browse Menu
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

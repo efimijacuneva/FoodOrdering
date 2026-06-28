@@ -1,0 +1,61 @@
+{% extends 'admin_panel/base.html' %}
+{% block title %}Orders{% endblock %}
+{% block page_title %}Orders{% endblock %}
+{% block nav_orders %}active-link{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<form method="get" class="d-flex flex-wrap gap-2 mb-4">
+  <input type="text" name="q" class="form-control form-control-sm" style="max-width:220px;"
+         placeholder="Order #, name, phone…" value="{{ search_q }}">
+  <select name="status" class="form-select form-select-sm" style="max-width:180px;">
+    <option value="">All Statuses</option>
+    {% for key, label in status_choices %}
+    <option value="{{ key }}" {% if status_filter == key %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-sm btn-outline-secondary"><i class="fas fa-filter me-1"></i>Filter</button>
+  {% if search_q or status_filter %}
+  <a href="{% url 'admin_orders' %}" class="btn btn-sm btn-outline-danger">
+    <i class="fas fa-xmark me-1"></i>Clear
+  </a>
+  {% endif %}
+</form>
+
+<div class="admin-table">
+  <table class="table table-hover mb-0">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Customer</th>
+        <th>Phone</th>
+        <th>Items</th>
+        <th>Total</th>
+        <th>Status</th>
+        <th>Date</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in orders %}
+      <tr>
+        <td class="fw-500">#{{ order.id }}</td>
+        <td>{{ order.get_customer_name }}</td>
+        <td class="text-muted small">{{ order.phone }}</td>
+        <td class="text-muted small">{{ order.items.count }}</td>
+        <td class="fw-500" style="color:var(--primary)">€{{ order.total_price }}</td>
+        <td><span class="status-badge status-{{ order.status }}">{{ order.get_status_display }}</span></td>
+        <td class="text-muted small">{{ order.created_at|date:"d M, H:i" }}</td>
+        <td>
+          <a href="{% url 'admin_order_detail' order.id %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-eye"></i>
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-center text-muted py-4">No orders found</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
