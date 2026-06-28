@@ -116,7 +116,6 @@ food-ordering-application/
 ├── docker-compose.yml
 ├── .env.example
 ├── .gitignore
-├── PROJECT_REPORT.md
 └── DEPLOYMENT_GUIDE.md
 ```
 
@@ -220,7 +219,6 @@ Copy [.env.example](.env.example) to `.env` and adjust as needed:
 |----------|-------------|
 | [docs/architecture.md](docs/architecture.md) | System diagrams, data models, request flow, security decisions |
 | [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) | Local, Docker Compose, Kubernetes, and CI/CD setup with troubleshooting |
-| [PROJECT_REPORT.md](PROJECT_REPORT.md) | Full academic project report with all design decisions |
 
 ---
 
