@@ -25,7 +25,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/install/bin:$PATH" \
     PYTHONPATH="/install/lib/python3.11/site-packages"
 
-# Runtime dependency only (no gcc)
+# Runtime dependency only (no gcc / libpq-dev build tools)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
@@ -36,22 +36,22 @@ COPY --from=builder /install /install
 # Copy application source
 COPY . .
 
-# Collect static files at build time
+# Collect static files at build time using a dummy key (no DB required).
+# CI=true switches to the simple StaticFilesStorage backend so there is no
+# need for a manifest file at this stage.
 RUN SECRET_KEY=build-time-static-collection \
-    DB_HOST=dummy \
-    DB_PORT=5432 \
     python manage.py collectstatic --noinput
 
-# Create non-root user for security
-RUN addgroup --system appgroup && \
-    adduser --system --ingroup appgroup appuser && \
-    mkdir -p /app/media && \
-    chown -R appuser:appgroup /app
-
-RUN chmod +x entrypoint.sh
+# Create a non-root user, set media directory, fix ownership, make entrypoint
+# executable — all in a single layer to keep the image small.
+RUN addgroup --system appgroup \
+    && adduser --system --ingroup appgroup --no-create-home appuser \
+    && mkdir -p /app/media \
+    && chown -R appuser:appgroup /app \
+    && chmod +x /app/entrypoint.sh
 
 USER appuser
 
 EXPOSE 8000
 
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]

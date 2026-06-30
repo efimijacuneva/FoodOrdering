@@ -6,12 +6,36 @@ __pycache__
 *.pyo
 *.pyd
 .Python
+
+# Virtual environments
 env/
 venv/
+.venv/
+
+# Environment / secrets — never bake into the image
 .env
-*.sqlite3
+.env.*
+*.env
+
+# Django build artefacts (re-created at build time)
 staticfiles/
 media/
+
+# Test & coverage
+*.sqlite3
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+
+# Docs and project meta
+docs/
+*.md
+.github/
+
+# OS / editor
 .DS_Store
 Thumbs.db
 *.log
+.idea/
+.vscode/

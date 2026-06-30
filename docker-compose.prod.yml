@@ -1,0 +1,20 @@
+# ── Production overrides ──────────────────────────────────────────────────────
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# All sensitive values MUST be present in your .env file (or shell environment).
+# Copy .env.example to .env and fill in real values before running.
+
+services:
+  backend:
+    environment:
+      DEBUG: 'False'
+    # Read all secrets from the environment / .env file — no fallbacks.
+    # SECRET_KEY, POSTGRES_PASSWORD, ALLOWED_HOSTS, etc. must all be set.
+    restart: always
+
+  postgres:
+    restart: always
+
+  frontend:
+    restart: always

@@ -6,6 +6,14 @@ server {
     listen 80;
     client_max_body_size 10M;
 
+    # Nginx-level liveness probe — does NOT proxy to the backend.
+    # Used by the Kubernetes livenessProbe on the frontend pod.
+    location /healthz {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok\n";
+    }
+
     location /media/ {
         alias /app/media/;
     }

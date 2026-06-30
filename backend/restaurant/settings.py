@@ -7,6 +7,14 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-dev-key-change-in-pro
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Refuse to start in production mode with the placeholder key.
+# The Dockerfile uses SECRET_KEY=build-time-static-collection which is not insecure.
+if not DEBUG and 'insecure' in SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY must not contain 'insecure'. "
+        "Set a strong SECRET_KEY environment variable before running in production."
+    )
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -57,6 +65,7 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
         'HOST': os.environ.get('DB_HOST', 'localhost'),
         'PORT': os.environ.get('DB_PORT', '5432'),
+        'CONN_MAX_AGE': 60,
     }
 }
 
@@ -75,10 +84,20 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-if os.environ.get('CI'):
-    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-else:
-    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Django 4.2+: use STORAGES instead of the deprecated STATICFILES_STORAGE setting.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": (
+            "django.contrib.staticfiles.storage.StaticFilesStorage"
+            if os.environ.get('CI')
+            else "whitenoise.storage.CompressedManifestStaticFilesStorage"
+        ),
+    },
+}
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -93,5 +112,27 @@ LOGOUT_REDIRECT_URL = '/'
 AUTH_USER_MODEL = 'orders.CustomUser'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-SESSION_COOKIE_AGE = 86400 * 7  # 1 week
+SESSION_COOKIE_AGE = 86400 * 7
 SESSION_SAVE_EVERY_REQUEST = True
+
+# ── Security headers ──────────────────────────────────────────────────────────
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
+REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
+# HTTPS-only settings — activate these when the cluster terminates TLS.
+# SECURE_SSL_REDIRECT = not DEBUG
+# SESSION_COOKIE_SECURE = not DEBUG
+# CSRF_COOKIE_SECURE = not DEBUG
+# SECURE_HSTS_SECONDS = 31536000
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# SECURE_HSTS_PRELOAD = True
+
+# Trust the X-Forwarded-Proto header from the nginx reverse proxy.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Allowed origins for CSRF when accessed via the ingress host.
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    'CSRF_TRUSTED_ORIGINS', 'http://localhost,http://127.0.0.1'
+).split(',')

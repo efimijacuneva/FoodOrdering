@@ -1,0 +1,22 @@
+# ── Development overrides ─────────────────────────────────────────────────────
+# This file is loaded automatically by `docker compose up`.
+# It supplies safe development defaults so you can start the stack without
+# setting any environment variables first.
+#
+# DO NOT use these defaults in production — use docker-compose.prod.yml instead.
+
+services:
+  backend:
+    environment:
+      SECRET_KEY: django-insecure-dev-only-do-not-use-in-production
+      DEBUG: 'True'
+      ALLOWED_HOSTS: 'localhost,127.0.0.1,backend'
+      POSTGRES_PASSWORD: postgres
+      CSRF_TRUSTED_ORIGINS: 'http://localhost,http://127.0.0.1'
+    # Expose backend directly for debugging (e.g. curl localhost:8000)
+    ports:
+      - "8000:8000"
+
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: postgres

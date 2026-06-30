@@ -20,6 +20,11 @@ spec:
       labels:
         app: backend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
       containers:
         - name: backend
           image: efimijac/food-ordering-backend:latest
@@ -41,25 +46,33 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false   # Django writes to /app/media and /tmp
+            capabilities:
+              drop: ["ALL"]
+          # Liveness: lightweight check that does NOT hit the database.
+          # A failing DB should not kill a healthy pod — it cannot fix a DB outage.
           livenessProbe:
             httpGet:
-              path: /
+              path: /health/
               port: 8000
               httpHeaders:
                 - name: Host
-                  value: food-ordering.local
-            initialDelaySeconds: 45
+                  value: localhost
+            initialDelaySeconds: 30
             periodSeconds: 15
             failureThreshold: 3
             timeoutSeconds: 5
+          # Readiness: same endpoint — pod is ready when Django can respond.
           readinessProbe:
             httpGet:
-              path: /
+              path: /health/
               port: 8000
               httpHeaders:
                 - name: Host
-                  value: food-ordering.local
-            initialDelaySeconds: 20
+                  value: localhost
+            initialDelaySeconds: 15
             periodSeconds: 10
             failureThreshold: 3
             timeoutSeconds: 5

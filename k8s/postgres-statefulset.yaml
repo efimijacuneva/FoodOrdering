@@ -16,9 +16,13 @@ spec:
       labels:
         app: postgres
     spec:
+      securityContext:
+        runAsUser: 999       # postgres image runs as uid 999 by default
+        runAsGroup: 999
+        fsGroup: 999
       containers:
         - name: postgres
-          image: postgres:15
+          image: postgres:15-alpine
           ports:
             - containerPort: 5432
               name: postgres
@@ -50,16 +54,27 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
+          # Use $(POSTGRES_USER) so the probe respects the secret-supplied username.
           livenessProbe:
             exec:
-              command: ["pg_isready", "-U", "postgres"]
+              command:
+                - sh
+                - -c
+                - "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"
             initialDelaySeconds: 30
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "postgres"]
+              command:
+                - sh
+                - -c
+                - "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"
             initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
   volumeClaimTemplates:
     - metadata:
         name: postgres-storage

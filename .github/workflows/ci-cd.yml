@@ -2,9 +2,10 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: ['**']      # Run tests on every branch push
   pull_request:
     branches: [main]
+  workflow_dispatch:      # Allow manual trigger from the Actions tab
 
 permissions:
   contents: read
@@ -15,7 +16,7 @@ env:
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
   # Job 1 – Test
-  # Runs on every push and pull request against main
+  # Runs on every push (all branches) and every pull request against main
   # ─────────────────────────────────────────────────────────────────────────────
   test:
     name: Run Tests
@@ -31,6 +32,7 @@ jobs:
       DB_PASSWORD: postgres
       DB_HOST: localhost
       DB_PORT: '5432'
+      CI: 'true'
 
     services:
       postgres:
@@ -66,7 +68,7 @@ jobs:
       - name: Run Django system checks
         run: |
           cd backend
-          python manage.py check --fail-level ERROR
+          python manage.py check --fail-level WARNING
 
       - name: Run database migrations
         run: |
@@ -84,7 +86,16 @@ jobs:
           python manage.py test orders --verbosity=2
 
       - name: Validate docker-compose syntax
-        run: docker compose config --quiet
+        env:
+          SECRET_KEY: ci-test-secret-key-not-for-production
+          DEBUG: 'True'
+          ALLOWED_HOSTS: 'localhost,127.0.0.1'
+          POSTGRES_DB: food_ordering_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          DOCKERHUB_USERNAME: local
+          IMAGE_TAG: latest
+        run: docker compose -f docker-compose.yml config --quiet
 
   # ─────────────────────────────────────────────────────────────────────────────
   # Job 2 – Build & Push Docker Images
@@ -168,7 +179,11 @@ jobs:
 
   # ─────────────────────────────────────────────────────────────────────────────
   # Job 3 – Deploy to Kubernetes  [OPTIONAL BONUS]
-  # Set the KUBECONFIG secret in GitHub → Settings → Secrets to enable this job.
+  # Requires these GitHub Secrets:
+  #   KUBECONFIG        – base64-encoded kubeconfig for the target cluster
+  #   DJANGO_SECRET_KEY – strong random Django secret key
+  #   K8S_DB_USER       – PostgreSQL username
+  #   K8S_DB_PASSWORD   – PostgreSQL password (use a strong password!)
   # ─────────────────────────────────────────────────────────────────────────────
   deploy:
     name: Deploy to Kubernetes
@@ -186,7 +201,8 @@ jobs:
           if [ -z "$KUBECONFIG_B64" ]; then
             echo "has_kubeconfig=false" >> $GITHUB_OUTPUT
             echo "KUBECONFIG secret is not set — skipping Kubernetes deployment."
-            echo "Add the KUBECONFIG secret in Settings → Secrets to enable auto-deploy."
+            echo "Add KUBECONFIG, DJANGO_SECRET_KEY, K8S_DB_USER, K8S_DB_PASSWORD"
+            echo "in Settings → Secrets to enable auto-deploy."
           else
             echo "has_kubeconfig=true" >> $GITHUB_OUTPUT
             echo "KUBECONFIG secret found — proceeding with deployment."
@@ -200,7 +216,7 @@ jobs:
         if: steps.check.outputs.has_kubeconfig == 'true'
         uses: azure/setup-kubectl@v4
         with:
-          version: latest
+          version: 'v1.30.0'
 
       - name: Configure kubectl
         if: steps.check.outputs.has_kubeconfig == 'true'
@@ -210,6 +226,30 @@ jobs:
           mkdir -p $HOME/.kube
           echo "$KUBECONFIG_B64" | base64 -d > $HOME/.kube/config
           chmod 600 $HOME/.kube/config
+
+      - name: Apply namespace and config (no secrets)
+        if: steps.check.outputs.has_kubeconfig == 'true'
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/configmap.yaml
+
+      - name: Create/update Kubernetes secret from GitHub Secrets
+        if: steps.check.outputs.has_kubeconfig == 'true'
+        env:
+          DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+          K8S_DB_USER: ${{ secrets.K8S_DB_USER }}
+          K8S_DB_PASSWORD: ${{ secrets.K8S_DB_PASSWORD }}
+        run: |
+          if [ -z "$DJANGO_SECRET_KEY" ] || [ -z "$K8S_DB_USER" ] || [ -z "$K8S_DB_PASSWORD" ]; then
+            echo "ERROR: DJANGO_SECRET_KEY, K8S_DB_USER, and K8S_DB_PASSWORD must all be set."
+            exit 1
+          fi
+          kubectl create secret generic food-ordering-secret \
+            --namespace food-ordering \
+            --from-literal=SECRET_KEY="$DJANGO_SECRET_KEY" \
+            --from-literal=DB_USER="$K8S_DB_USER" \
+            --from-literal=DB_PASSWORD="$K8S_DB_PASSWORD" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Substitute image tag in manifests
         if: steps.check.outputs.has_kubeconfig == 'true'
@@ -225,16 +265,17 @@ jobs:
             k8s/backend-deployment.yaml \
             k8s/frontend-deployment.yaml
 
-      - name: Apply Kubernetes manifests
+      - name: Apply storage and database manifests
         if: steps.check.outputs.has_kubeconfig == 'true'
         run: |
-          kubectl apply -f k8s/namespace.yaml
-          kubectl apply -f k8s/configmap.yaml
-          kubectl apply -f k8s/secret.yaml
           kubectl apply -f k8s/persistent-volume.yaml
           kubectl apply -f k8s/persistent-volume-claim.yaml
           kubectl apply -f k8s/postgres-statefulset.yaml
           kubectl apply -f k8s/postgres-service.yaml
+
+      - name: Apply application manifests
+        if: steps.check.outputs.has_kubeconfig == 'true'
+        run: |
           kubectl apply -f k8s/backend-deployment.yaml
           kubectl apply -f k8s/backend-service.yaml
           kubectl apply -f k8s/frontend-deployment.yaml
