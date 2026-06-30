@@ -403,6 +403,8 @@ h1, h2, h3, h4, h5, h6 { font-weight: 600; }
 
 .footer-link:hover { color: var(--primary); }
 
+.footer .text-muted { color: rgba(255,255,255,.6) !important; }
+
 /* ── Admin Panel ────────────────────────────────────────────────────────────── */
 .admin-body {
   background: #f1f5f9;

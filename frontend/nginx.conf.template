@@ -6,6 +6,10 @@ server {
     listen 80;
     client_max_body_size 10M;
 
+    location /media/ {
+        alias /app/media/;
+    }
+
     location / {
         proxy_pass http://${BACKEND_HOST}:8000;
         proxy_set_header Host $host;
