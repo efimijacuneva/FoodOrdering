@@ -14,7 +14,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-food_ordering_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-food_ordering_db}"]
       interval: 5s
@@ -32,12 +32,12 @@ services:
     networks:
       - food-ordering-net
     environment:
-      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+      SECRET_KEY: ${SECRET_KEY:-django-insecure-dev-key-change-in-production}
       DEBUG: ${DEBUG:-False}
       ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
       DB_NAME: ${POSTGRES_DB:-food_ordering_db}
       DB_USER: ${POSTGRES_USER:-postgres}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       DB_HOST: postgres
       DB_PORT: 5432
       DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-Tasty Bites <noreply@tastybites.mk>}

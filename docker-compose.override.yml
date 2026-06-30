@@ -1,22 +1,27 @@
 # ── Development overrides ─────────────────────────────────────────────────────
-# This file is loaded automatically by `docker compose up`.
-# It supplies safe development defaults so you can start the stack without
-# setting any environment variables first.
+# Loaded automatically by `docker compose up` (no -f flag needed).
+# Provides COMPLETE dev defaults — the stack starts without any .env file.
 #
-# DO NOT use these defaults in production — use docker-compose.prod.yml instead.
+# These explicit values also prevent the postgres volume password from
+# being overridden by whatever POSTGRES_PASSWORD happens to be in .env.
 
 services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: postgres
+
   backend:
     environment:
       SECRET_KEY: django-insecure-dev-only-do-not-use-in-production
       DEBUG: 'True'
-      ALLOWED_HOSTS: 'localhost,127.0.0.1,backend'
-      POSTGRES_PASSWORD: postgres
-      CSRF_TRUSTED_ORIGINS: 'http://localhost,http://127.0.0.1'
-    # Expose backend directly for debugging (e.g. curl localhost:8000)
+      ALLOWED_HOSTS: 'localhost,127.0.0.1,backend,food-ordering.local'
+      DB_PASSWORD: postgres          # must match postgres service above
+      CSRF_TRUSTED_ORIGINS: 'http://localhost,http://localhost:8080,http://127.0.0.1,http://127.0.0.1:8080'
+    # Expose backend directly for debugging (curl localhost:8000)
     ports:
       - "8000:8000"
 
-  postgres:
-    environment:
-      POSTGRES_PASSWORD: postgres
+  frontend:
+    # Use port 8080 so Docker Compose doesn't conflict with minikube tunnel on :80
+    ports:
+      - "8080:80"
