@@ -9,6 +9,7 @@ data:
   # Django settings
   DEBUG: "False"
   ALLOWED_HOSTS: "localhost,127.0.0.1,food-ordering.local,backend,backend.food-ordering.svc.cluster.local"
+  CSRF_TRUSTED_ORIGINS: "http://food-ordering.local"
   DJANGO_SETTINGS_MODULE: "restaurant.settings"
   DEFAULT_FROM_EMAIL: "Tasty Bites <noreply@tastybites.mk>"
 

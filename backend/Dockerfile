@@ -37,8 +37,7 @@ COPY --from=builder /install /install
 COPY . .
 
 # Collect static files at build time using a dummy key (no DB required).
-# CI=true switches to the simple StaticFilesStorage backend so there is no
-# need for a manifest file at this stage.
+# CompressedManifestStaticFilesStorage runs here and writes staticfiles.json.
 RUN SECRET_KEY=build-time-static-collection \
     python manage.py collectstatic --noinput
 

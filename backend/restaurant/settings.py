@@ -119,7 +119,8 @@ SESSION_SAVE_EVERY_REQUEST = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'DENY'
-REFERRER_POLICY = 'strict-origin-when-cross-origin'
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None  # suppress browser COOP warning on HTTP; set to 'same-origin' in prod
 
 # HTTPS-only settings — activate these when the cluster terminates TLS.
 # SECURE_SSL_REDIRECT = not DEBUG

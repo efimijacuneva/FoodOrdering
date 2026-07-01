@@ -22,9 +22,18 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 999
-        runAsGroup: 999
-        fsGroup: 999
+        runAsUser: 100   # appuser UID assigned by adduser --system in the Dockerfile
+        runAsGroup: 101  # appgroup GID
+      initContainers:
+        - name: fix-media-permissions
+          image: busybox:latest
+          command: ["sh", "-c", "chown -R 100:101 /app/media"]
+          volumeMounts:
+            - name: media-storage
+              mountPath: /app/media
+          securityContext:
+            runAsUser: 0          # must be root to chown
+            runAsNonRoot: false   # overrides pod-level policy for this init container only
       containers:
         - name: backend
           image: efimijac/food-ordering-backend:latest
@@ -46,33 +55,25 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false   # Django writes to /app/media and /tmp
-            capabilities:
-              drop: ["ALL"]
-          # Liveness: lightweight check that does NOT hit the database.
-          # A failing DB should not kill a healthy pod — it cannot fix a DB outage.
           livenessProbe:
             httpGet:
-              path: /health/
+              path: /
               port: 8000
               httpHeaders:
                 - name: Host
-                  value: localhost
-            initialDelaySeconds: 30
+                  value: food-ordering.local
+            initialDelaySeconds: 45
             periodSeconds: 15
             failureThreshold: 3
             timeoutSeconds: 5
-          # Readiness: same endpoint — pod is ready when Django can respond.
           readinessProbe:
             httpGet:
-              path: /health/
+              path: /
               port: 8000
               httpHeaders:
                 - name: Host
-                  value: localhost
-            initialDelaySeconds: 15
+                  value: food-ordering.local
+            initialDelaySeconds: 20
             periodSeconds: 10
             failureThreshold: 3
             timeoutSeconds: 5
