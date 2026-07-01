@@ -104,8 +104,9 @@ jobs:
 
       - name: Validate Kubernetes manifests
         run: |
-          # --dry-run=client validates YAML and schema without a live cluster.
-          kubectl apply --dry-run=client -f k8s/
+          # --dry-run=client --validate=false: parses YAML and checks object structure
+          # without downloading the OpenAPI schema (which requires a live cluster).
+          kubectl apply --dry-run=client --validate=false -f k8s/
 
   # ─────────────────────────────────────────────────────────────────────────────
   # Job 2 – Build & Push Docker Images
