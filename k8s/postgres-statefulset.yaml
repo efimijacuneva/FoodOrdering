@@ -17,8 +17,8 @@ spec:
         app: postgres
     spec:
       securityContext:
-        runAsUser: 999       # postgres image runs as uid 999 by default
-        runAsGroup: 999
+        runAsUser: 999       # postgres:15-alpine default is uid 70; 999 is forced here
+        runAsGroup: 999      # and works because fsGroup: 999 grants volume write access
         fsGroup: 999
       containers:
         - name: postgres

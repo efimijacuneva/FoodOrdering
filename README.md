@@ -55,10 +55,10 @@ docker compose up -d
 # 4. Create an admin user
 docker compose exec backend python manage.py createsuperuser
 
-# 5. Open in browser
-#   App:           http://localhost
-#   Admin panel:   http://localhost/admin-panel/
-#   Django admin:  http://localhost/django-admin/
+# 5. Open in browser  (docker-compose.override.yml maps the frontend to :8080)
+#   App:           http://localhost:8080
+#   Admin panel:   http://localhost:8080/admin-panel/
+#   Django admin:  http://localhost:8080/django-admin/
 ```
 
 ---
@@ -206,6 +206,7 @@ Copy [.env.example](.env.example) to `.env` and adjust as needed:
 | `SECRET_KEY` | Django secret key | insecure dev key |
 | `DEBUG` | Enable debug mode | `False` |
 | `ALLOWED_HOSTS` | Comma-separated allowed hosts | `localhost,127.0.0.1` |
+| `CSRF_TRUSTED_ORIGINS` | Comma-separated trusted origins (with scheme) | `http://localhost,http://127.0.0.1` |
 | `POSTGRES_DB` | Database name | `food_ordering_db` |
 | `POSTGRES_USER` | Database user | `postgres` |
 | `POSTGRES_PASSWORD` | Database password | `postgres` |

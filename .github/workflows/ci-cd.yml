@@ -97,6 +97,16 @@ jobs:
           IMAGE_TAG: latest
         run: docker compose -f docker-compose.yml config --quiet
 
+      - name: Set up kubectl for manifest validation
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.30.0'
+
+      - name: Validate Kubernetes manifests
+        run: |
+          # --dry-run=client validates YAML and schema without a live cluster.
+          kubectl apply --dry-run=client -f k8s/
+
   # ─────────────────────────────────────────────────────────────────────────────
   # Job 2 – Build & Push Docker Images
   # Runs only on push to main, after tests pass

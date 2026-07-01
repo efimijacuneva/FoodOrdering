@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+# Build into a venv so the production stage needs no version-specific PYTHONPATH.
+RUN python -m venv /venv && \
+    /venv/bin/pip install --no-cache-dir -r requirements.txt
 
 
 # ── Stage 2: Production image ─────────────────────────────────────────────────
@@ -22,16 +24,15 @@ WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/install/bin:$PATH" \
-    PYTHONPATH="/install/lib/python3.11/site-packages"
+    PATH="/venv/bin:$PATH"
 
 # Runtime dependency only (no gcc / libpq-dev build tools)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed packages from builder
-COPY --from=builder /install /install
+# Copy virtual environment from builder
+COPY --from=builder /venv /venv
 
 # Copy application source
 COPY . .
@@ -52,5 +53,8 @@ RUN addgroup --system appgroup \
 USER appuser
 
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')" || exit 1
 
 ENTRYPOINT ["/app/entrypoint.sh"]
